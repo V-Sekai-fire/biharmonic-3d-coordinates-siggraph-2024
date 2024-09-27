@@ -8,12 +8,20 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -Wall -fopenmp -fpermissive")
 
 add_definitions(-DGLM_ENABLE_EXPERIMENTAL)
 
-include_directories(thirdparty/polyscope_2/include thirdparty/polyscope_2/deps/imgui/imgui thirdparty/polyscope_2/deps/glm)
+include_directories(thirdparty/polyscope_2/include thirdparty/polyscope_2/deps/imgui/imgui thirdparty/polyscope_2/deps/glm thirdparty/ImGuizmo)
 
 add_subdirectory(thirdparty/eigen)
 add_subdirectory(thirdparty/polyscope_2)
 
-add_executable(ex_bhc3d main.cpp ${IMGUI_SOURCES})
+add_executable(ex_bhc3d 
+    main.cpp
+    thirdparty/ImGuizmo/GraphEditor.cpp
+    thirdparty/ImGuizmo/ImCurveEdit.cpp
+    thirdparty/ImGuizmo/ImGradient.cpp
+    thirdparty/ImGuizmo/ImGuizmo.cpp
+    thirdparty/ImGuizmo/ImSequencer.cpp
+    ${IMGUI_SOURCES}
+)
 
 find_package(OpenGL REQUIRED)
 
