@@ -2,7 +2,7 @@
 #include "include/BasicIO.h"
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
-#include <imgui_impl_opengl3.h>
+#include "imgui_impl_opengl3.h"
 #include <GLFW/glfw3.h> // Include glfw3.h after our OpenGL definitions
 
 static void glfw_error_callback(int error, const char* description) {
@@ -24,12 +24,6 @@ int main(int argc, char const *argv[]) {
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1); // Enable vsync
 
-    bool err = gladLoadGL() == 0;
-    if (err) {
-        fprintf(stderr, "Failed to initialize OpenGL loader!\n");
-        return 1;
-    }
-
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
@@ -49,22 +43,20 @@ int main(int argc, char const *argv[]) {
 	Eigen::MatrixXd ConstrainedBiH_13_C21;
 	Eigen::MatrixXd ConstrainedBiH_13_C22;
 
-    double gamma_D_13BC = 1.0;
+    float gamma_D_13BC = 1.0;
     std::vector<point3d> cage_vertices, cage_modified_vertices, mesh_vertices, mesh_modified_vertices;
     std::vector<std::vector<unsigned int>> cage_triangles, mesh_triangles;
-    std::vector<std::vector<double>> BHConstrainedC_13_phi, BHConstrainedC_13_psi;
     std::vector<point3d> cage_triangle_normals;
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
-        ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
         ImGui::Begin("Biharmonic Coordinates Control Panel");
 
         ImGui::Text("Adjust parameters and load/save operations:");
-        ImGui::SliderDouble("Gamma D 13BC", &gamma_D_13BC, 0.0, 10.0);
+        ImGui::SliderFloat("Gamma D 13BC", &gamma_D_13BC, 0.0, 10.0);
 
         if (ImGui::Button("Load Cage")) {
             OBJIO::open("models/cage.obj", cage_vertices, cage_triangles, true);
@@ -117,7 +109,6 @@ int main(int argc, char const *argv[]) {
         glfwSwapBuffers(window);
     }
 
-    ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 
