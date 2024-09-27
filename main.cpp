@@ -1,18 +1,41 @@
 #include "include/BHC.h"
 #include "include/BasicIO.h"
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
+#include <GLFW/glfw3.h> // Include glfw3.h after our OpenGL definitions
+
+static void glfw_error_callback(int error, const char* description) {
+    std::cerr << "Glfw Error " << error << ": " << description << std::endl;
+}
 
 int main(int argc, char const *argv[]) {
-	std::cout << " Load cage " << std::endl;
-	// Load cage:
-	std::vector<point3d> cage_vertices;
-	std::vector<std::vector<unsigned int>> cage_triangles;
-	OBJIO::open("models/cage.obj", cage_vertices, cage_triangles, true); // TRIANGULATE THE FACES OF THE CAGE HERE! (obviously)
+    glfwSetErrorCallback(glfw_error_callback);
+    if (!glfwInit())
+        return 1;
 
-	std::cout << " Load mesh " << std::endl;
-	// Load mesh:
-	std::vector<point3d> mesh_vertices;
-	std::vector<std::vector<unsigned int>> mesh_triangles;
-	OBJIO::open("models/mesh.obj", mesh_vertices, mesh_triangles, true);
+    const char* glsl_version = "#version 130";
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+
+    GLFWwindow* window = glfwCreateWindow(1280, 720, "Dear ImGui - BHC Example", NULL, NULL);
+    if (window == NULL)
+        return 1;
+    glfwMakeContextCurrent(window);
+    glfwSwapInterval(1); // Enable vsync
+
+    bool err = gladLoadGL() == 0;
+    if (err) {
+        fprintf(stderr, "Failed to initialize OpenGL loader!\n");
+        return 1;
+    }
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGui::StyleColorsDark();
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init(glsl_version);
 
 	std::cout << " Coordinates " << std::endl;
 	// Coordinates:
@@ -25,76 +48,81 @@ int main(int argc, char const *argv[]) {
 	Eigen::MatrixXd ConstrainedBiH_13_C12;
 	Eigen::MatrixXd ConstrainedBiH_13_C21;
 	Eigen::MatrixXd ConstrainedBiH_13_C22;
-	double gamma_D_13BC = 1.0; // you can play with this
 
-	BiharmonicCoordinates3D::computeConstrainedBiharmonicMatrices_13(
-			cage_triangles, cage_vertices,
-			ConstrainedBiH_13_C11, ConstrainedBiH_13_C12, ConstrainedBiH_13_C21, ConstrainedBiH_13_C22,
-			gamma_D_13BC);
+    double gamma_D_13BC = 1.0;
+    std::vector<point3d> cage_vertices, cage_modified_vertices, mesh_vertices, mesh_modified_vertices;
+    std::vector<std::vector<unsigned int>> cage_triangles, mesh_triangles;
+    std::vector<std::vector<double>> BHConstrainedC_13_phi, BHConstrainedC_13_psi;
+    std::vector<point3d> cage_triangle_normals;
 
-	std::cout << " Compute unconstrained coordinates " << std::endl;
-	// Compute unconstrained coordinates for the mesh vertices:
-	{
-		BHC_h_phi.resize(mesh_vertices.size());
-		BHC_bh_phi.resize(mesh_vertices.size());
-		BHC_h_psi.resize(mesh_vertices.size());
-		BHC_bh_psi.resize(mesh_vertices.size());
+    while (!glfwWindowShouldClose(window)) {
+        glfwPollEvents();
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
 
-#pragma omp parallel for
-		for (int p_idx = 0; p_idx < mesh_vertices.size(); ++p_idx) {
-			BiharmonicCoordinates3D::computeCoordinates(mesh_vertices[p_idx],
-					cage_triangles,
-					cage_vertices,
-					BHC_h_phi[p_idx], BHC_h_psi[p_idx], BHC_bh_phi[p_idx], BHC_bh_psi[p_idx]);
-		}
-	}
+        ImGui::Begin("Biharmonic Coordinates Control Panel");
 
-	std::cout << " Compute (1,3)-regularized BHC " << std::endl;
-	// Compute (1,3)-regularized BHC:
-	{
-		BHConstrainedC_13_phi.resize(mesh_vertices.size());
-		BHConstrainedC_13_psi.resize(mesh_vertices.size());
-		for (int p_idx = 0; p_idx < mesh_vertices.size(); ++p_idx) {
-			BiharmonicCoordinates3D::compute_13_blending_from_unconstrained_biharmonics(
-					BHC_h_phi[p_idx], BHC_h_psi[p_idx], BHC_bh_phi[p_idx], BHC_bh_psi[p_idx],
-					ConstrainedBiH_13_C11, ConstrainedBiH_13_C12, ConstrainedBiH_13_C21, ConstrainedBiH_13_C22,
-					BHConstrainedC_13_phi[p_idx], BHConstrainedC_13_psi[p_idx]);
-		}
-	}
+        ImGui::Text("Adjust parameters and load/save operations:");
+        ImGui::SliderDouble("Gamma D 13BC", &gamma_D_13BC, 0.0, 10.0);
 
-	std::cout << " Apply some deformation to the cage " << std::endl;
-	// Apply some deformation to the cage:
-	std::vector<point3d> cage_modified_vertices;
-	OBJIO::open("models/cage_deformed.obj", cage_modified_vertices);
+        if (ImGui::Button("Load Cage")) {
+            OBJIO::open("models/cage.obj", cage_vertices, cage_triangles, true);
+        }
+        if (ImGui::Button("Load Mesh")) {
+            OBJIO::open("models/mesh.obj", mesh_vertices, mesh_triangles, true);
+        }
+        if (ImGui::Button("Deform Cage")) {
+            OBJIO::open("models/cage_deformed.obj", cage_modified_vertices);
+            cage_triangle_normals.resize(cage_triangles.size());
+            for (unsigned int tIt = 0; tIt < cage_triangles.size(); ++tIt) {
+                auto &t = cage_triangles[tIt];
+                cage_triangle_normals[tIt] = point3d::cross(cage_modified_vertices[t[1]] - cage_modified_vertices[t[0]], cage_modified_vertices[t[2]] - cage_modified_vertices[t[0]]).direction();
+            }
+        }
+        if (ImGui::Button("Update Mesh Deformation")) {
+            std::cout << " Compute cage triangle normals " << std::endl;
+            std::vector<point3d> cage_triangle_normals(cage_triangles.size(), point3d(0, 0, 0));
+            for (unsigned int tIt = 0; tIt < cage_triangles.size(); ++tIt) {
+                auto &t = cage_triangles[tIt];
+                cage_triangle_normals[tIt] = point3d::cross(cage_modified_vertices[t[1]] - cage_modified_vertices[t[0]], cage_modified_vertices[t[2]] - cage_modified_vertices[t[0]]).direction();
+            }
+            std::cout << " Update the mesh deformation, from the cage deformation " << std::endl;
+            std::vector<point3d> mesh_modified_vertices(mesh_vertices.size());
+            #pragma omp parallel for
+            for (int v = 0; v < mesh_vertices.size(); ++v) {
+                point3d pos(0, 0, 0);
+                for (unsigned int vc = 0; vc < cage_modified_vertices.size(); ++vc)
+                    pos += BHConstrainedC_13_phi[v][vc] * cage_modified_vertices[vc];
+                for (unsigned int tc = 0; tc < cage_triangles.size(); ++tc) {
+                    pos += BHConstrainedC_13_psi[v][tc] * cage_triangle_normals[tc];
+                }
+                mesh_modified_vertices[v] = pos;
+            }
+        }
+        if (ImGui::Button("Save Deformed Mesh")) {
+            OBJIO::save("models/mesh_deformed.obj", mesh_modified_vertices, mesh_triangles);
+        }
 
-	std::cout << " Compute cage triangle normals " << std::endl;
-	// Compute cage triangle normals:
-	std::vector<point3d> cage_triangle_normals(cage_triangles.size(), point3d(0, 0, 0));
-	for (unsigned int tIt = 0; tIt < cage_triangles.size(); ++tIt) {
-		auto &t = cage_triangles[tIt];
-		cage_triangle_normals[tIt] = point3d::cross(cage_modified_vertices[t[1]] - cage_modified_vertices[t[0]], cage_modified_vertices[t[2]] - cage_modified_vertices[t[0]]).direction();
-	}
+        ImGui::End();
 
-	std::cout << " Update the mesh deformation, from the cage deformation " << std::endl;
-	// Update the mesh deformation, from the cage deformation:
-	std::vector<point3d> mesh_modified_vertices(mesh_vertices.size());
-	{
-#pragma omp parallel for
-		for (int v = 0; v < mesh_vertices.size(); ++v) {
-			point3d pos(0, 0, 0);
-			for (unsigned int vc = 0; vc < cage_modified_vertices.size(); ++vc)
-				pos += BHConstrainedC_13_phi[v][vc] * cage_modified_vertices[vc];
-			for (unsigned int tc = 0; tc < cage_triangles.size(); ++tc) {
-				pos += BHConstrainedC_13_psi[v][tc] * cage_triangle_normals[tc];
-			}
+        ImGui::Render();
+        int display_w, display_h;
+        glfwGetFramebufferSize(window, &display_w, &display_h);
+        glViewport(0, 0, display_w, display_h);
+        glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
+        glClear(GL_COLOR_BUFFER_BIT);
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-			mesh_modified_vertices[v] = pos;
-		}
-	}
+        glfwSwapBuffers(window);
+    }
 
-	std::cout << " Save deformed mesh " << std::endl;
-	// Save deformed mesh:
-	OBJIO::save("models/mesh_deformed.obj", mesh_modified_vertices, mesh_triangles);
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
 
-	return 0;
+    glfwDestroyWindow(window);
+    glfwTerminate();
+
+    return 0;
 }
