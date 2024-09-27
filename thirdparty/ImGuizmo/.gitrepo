@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/CedricGuillemet/ImGuizmo.git
+	branch = master
+	commit = 6d588209f99b1324a608783d1f52faa518886c29
+	parent = 3fb1b73f908b0a809a6b9e13b5647c6ad3eb4414
+	method = merge
+	cmdver = 0.4.9
