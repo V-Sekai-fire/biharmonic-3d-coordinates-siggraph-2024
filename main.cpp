@@ -3,6 +3,7 @@
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include "imgui_impl_opengl3.h"
+#define GL_SILENCE_DEPRECATION
 #include <GLFW/glfw3.h> // Include glfw3.h after our OpenGL definitions
 
 static void glfw_error_callback(int error, const char* description) {
@@ -27,9 +28,10 @@ int main(int argc, char const *argv[]) {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
     ImGui::StyleColorsDark();
     ImGui_ImplGlfw_InitForOpenGL(window, true);
-    ImGui_ImplOpenGL3_Init(glsl_version);
 
 	std::cout << " Coordinates " << std::endl;
 	// Coordinates:
