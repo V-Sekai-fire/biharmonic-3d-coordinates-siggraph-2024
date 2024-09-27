@@ -31,7 +31,6 @@ void myCallback() {
 				std::cerr << "Failed to load cage model." << std::endl;
 				return;
 			}
-			std::cout << "Cage loaded successfully." << std::endl;
 
 			std::cout << "Loading mesh..." << std::endl;
 			if (!OBJIO::open("models/mesh.obj", mesh_vertices, mesh_triangles, true)) {
@@ -101,10 +100,12 @@ void myCallback() {
 				mesh_modified_vertices[v] = pos;
 			}
 			std::cout << "Mesh deformation updated from cage deformation." << std::endl;
+		    polyscope::getSurfaceMesh("Cage Mesh")->updateVertexPositions(cage_modified_vertices);
 		} else {
 			std::cout << " Reload original mesh " << std::endl;
 			OBJIO::open("models/mesh.obj", mesh_vertices, mesh_triangles, true);
 			mesh_modified_vertices = mesh_vertices;
+		    polyscope::getSurfaceMesh("Cage Mesh")->updateVertexPositions(cage_vertices);
 		}
 		polyscope::getSurfaceMesh("Deformed Mesh")->updateVertexPositions(mesh_modified_vertices);
 		polyscope::getSurfaceMesh(showDeformedMesh ? "Deformed Mesh" : "Original Mesh")->setEnabled(true);
@@ -127,6 +128,8 @@ int main(int argc, char const *argv[]) {
 	mesh_modified_vertices.resize(mesh_vertices.size(), point3d(0, 0, 0));
 	polyscope::registerSurfaceMesh("Original Mesh", mesh_vertices, mesh_triangles);
 	polyscope::registerSurfaceMesh("Deformed Mesh", mesh_modified_vertices, mesh_triangles)->setEnabled(false);
+    auto* psCageMesh = polyscope::registerSurfaceMesh("Cage Mesh", cage_vertices, cage_triangles);
+    psCageMesh->setTransparency(0.5);
 	polyscope::state::userCallback = myCallback;
 	polyscope::show();
 	return EXIT_SUCCESS;
