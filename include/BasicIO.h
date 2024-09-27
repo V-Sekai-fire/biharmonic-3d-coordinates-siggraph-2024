@@ -160,7 +160,7 @@ template< class point_t > bool open( const std::string & filename , std::vector<
     if (!myfile.is_open())
     {
         std::cout << filename << " cannot be opened" << std::endl;
-        return;
+        return false;
     }
 
     std::string magic_s;

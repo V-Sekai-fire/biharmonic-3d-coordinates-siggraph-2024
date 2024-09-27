@@ -1,11 +1,5 @@
-
 #include "include/BHC.h"
 #include "include/BasicIO.h"
-
-
-
-
-
 
 int main(int argc, char const* argv[])
 {
@@ -13,7 +7,7 @@ int main(int argc, char const* argv[])
     // Load cage:
     std::vector< point3d > cage_vertices;
     std::vector< std::vector< unsigned int > > cage_triangles;
-    OBJIO::open("../models/cage.obj", cage_vertices, cage_triangles, true); // TRIANGULATE THE FACES OF THE CAGE HERE! (obviously)
+    OBJIO::open("models/cage.obj", cage_vertices, cage_triangles, true); // TRIANGULATE THE FACES OF THE CAGE HERE! (obviously)
 
 
 
@@ -21,7 +15,7 @@ int main(int argc, char const* argv[])
     // Load mesh:
     std::vector< point3d > mesh_vertices;
     std::vector< std::vector< unsigned int > > mesh_triangles;
-    OBJIO::open("../models/mesh.obj", mesh_vertices, mesh_triangles, true);
+    OBJIO::open("models/mesh.obj", mesh_vertices, mesh_triangles, true);
      
 
 
@@ -89,7 +83,7 @@ int main(int argc, char const* argv[])
     std::cout << " Apply some deformation to the cage " << std::endl;
     // Apply some deformation to the cage:
     std::vector< point3d > cage_modified_vertices;
-    OBJIO::open("../models/cage_deformed.obj", cage_modified_vertices);
+    OBJIO::open("models/cage_deformed.obj", cage_modified_vertices);
 
 
 
@@ -123,7 +117,7 @@ int main(int argc, char const* argv[])
 
     std::cout << " Save deformed mesh " << std::endl;
     // Save deformed mesh:
-    OBJIO::save("../models/mesh_deformed.obj", mesh_modified_vertices, mesh_triangles);
+    OBJIO::save("models/mesh_deformed.obj", mesh_modified_vertices, mesh_triangles);
 
     return 0;
 }
