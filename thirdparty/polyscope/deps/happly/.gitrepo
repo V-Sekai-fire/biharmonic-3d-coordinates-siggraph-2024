@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/nmwsharp/happly.git
+	branch = master
+	commit = 8a606309daaa680eee495c8279feb0b704148f4a
+	parent = 3b55d6e8869e0dd0a6bfbc9f4199f594f7354ff6
+	method = merge
+	cmdver = 0.4.9
