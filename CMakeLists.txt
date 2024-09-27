@@ -1,17 +1,14 @@
 cmake_minimum_required(VERSION 3.0)
 project(bhc3d LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -Wall -fopenmp -fpermissive")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -Wall -fpermissive") # Removed -fopenmp optimization.
 
 add_definitions(-DGLM_ENABLE_EXPERIMENTAL)
 
-include_directories(thirdparty/polyscope/include thirdparty/polyscope/deps/imgui/imgui thirdparty/polyscope/deps/glm)
-
 add_subdirectory(thirdparty/eigen)
-add_subdirectory(thirdparty/polyscope)
 
 add_executable(ex_bhc3d 
     main.cpp
@@ -21,8 +18,5 @@ add_executable(ex_bhc3d
 find_package(OpenGL REQUIRED)
 
 target_link_libraries(ex_bhc3d 
-    glfw 
-    polyscope
-    ${OPENGL_gl_LIBRARY}
     Eigen3::Eigen
 )
