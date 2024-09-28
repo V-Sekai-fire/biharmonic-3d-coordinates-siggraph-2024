@@ -14,8 +14,8 @@ class MeshMorph3D : public Node3D {
     GDCLASS(MeshMorph3D, Node3D)
 private:
     Ref<ArrayMesh> cage_mesh;
-    Array original_vertices;
-    Array modified_vertices;
+    std::vector<point3d> original_vertices;
+    std::vector<point3d> modified_vertices;
     float gamma_D_13BC = 1.0;
 
     std::vector<point3d> convert_godot_array_to_vector(const Array& godot_array) {
@@ -39,6 +39,24 @@ private:
         return vertices;
     }
 
+    const std::vector<std::vector<unsigned int>> extract_triangles(Ref<ArrayMesh> mesh) {
+        std::vector<std::vector<unsigned int>> triangles;
+        // Assuming mesh has only one surface
+        Array arrays = mesh->surface_get_arrays(0);
+
+        PackedInt32Array index_array = arrays[Mesh::ARRAY_INDEX];
+        for (int i = 0; i < index_array.size(); i += 3) {
+            if (i + 2 < index_array.size()) {
+                std::vector<unsigned int> triangle;
+                triangle.push_back(index_array[i]);
+                triangle.push_back(index_array[i + 1]);
+                triangle.push_back(index_array[i + 2]);
+                triangles.push_back(triangle);
+            }
+        }
+
+        return triangles;
+    }
 
     std::vector<point3d> calculate_normals(Ref<ArrayMesh> mesh) {
         std::vector<point3d> normals;
@@ -58,12 +76,8 @@ private:
         }
         return normals;
     }
-
-    std::vector<point3d> apply_deformation(const std::vector<point3d>& original_vertices, const std::vector<point3d>& cage_vertices, const std::vector<point3d>& cage_modified_vertices, const std::vector<point3d>& cage_triangle_normals) {
-        std::vector<point3d> modified_vertices = original_vertices;
-        return modified_vertices;
-    }
-    void update_mesh(Ref<ArrayMesh> mesh, const std::vector<point3d>& vertices) {
+	std::vector<point3d> apply_deformation(const std::vector<point3d> &original_vertices, const std::vector<std::vector<unsigned int>> &cage_triangles, const std::vector<point3d> &cage_vertices, const std::vector<point3d> &cage_modified_vertices, std::vector<point3d> &cage_triangle_normals);
+	void update_mesh(Ref<ArrayMesh> mesh, const std::vector<point3d>& vertices) {
         Ref<SurfaceTool> st = memnew(SurfaceTool);
         st->begin(Mesh::PRIMITIVE_TRIANGLES);
         for (const point3d& p : vertices) {
