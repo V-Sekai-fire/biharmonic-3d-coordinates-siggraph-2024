@@ -1,4 +1,2 @@
-build/
-*~
-*.user
-output
+godot_cpp_template/bin/windows
+godot_cpp_template/demo/bin/example.gdextension

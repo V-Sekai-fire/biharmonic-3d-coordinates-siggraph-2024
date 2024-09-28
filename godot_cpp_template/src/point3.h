@@ -1175,12 +1175,12 @@ public:
                 + c[0] * ( vals[3] * vals[7] - vals[6] * vals[4] );
     }
 
-    template< class point_t >
+
     void RSD( mat33<T> & R , mat33<T> & S ) const {
         mat33<T> U , Vt; T x,y,z;
         SVD(U,x,y,z,Vt);
         R = U * Vt;
-        S = Vt.getTranspose() * mat33<T>::diag(x,y,z)*Vt;
+        S = Vt.getTranspose() * mat33<T>::Diag(x,y,z)*Vt;
     }
 
     static

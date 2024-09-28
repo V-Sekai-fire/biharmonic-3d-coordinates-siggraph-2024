@@ -6,8 +6,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -Wall -fpermissive") # Removed -fopenmp optimization.
 
-add_definitions(-DGLM_ENABLE_EXPERIMENTAL)
-
 add_subdirectory(thirdparty/eigen)
 
 add_executable(ex_bhc3d 
