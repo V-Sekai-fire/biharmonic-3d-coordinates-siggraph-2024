@@ -1,0 +1,10 @@
+[gd_scene load_steps=3 format=3 uid="uid://d3bke30es3s3f"]
+
+[ext_resource type="ArrayMesh" uid="uid://cxuxhrplsgre1" path="res://triangle_3d_cage/art/cage.obj" id="1_0y0h6"]
+[ext_resource type="ArrayMesh" uid="uid://c36uihjdkke20" path="res://triangle_3d_cage/art/mesh.obj" id="2_dlhqm"]
+
+[node name="Node3D" type="Node3D"]
+
+[node name="MeshInstance3D" type="MeshMorph3D" parent="."]
+cage_mesh = ExtResource("1_0y0h6")
+mesh = ExtResource("2_dlhqm")

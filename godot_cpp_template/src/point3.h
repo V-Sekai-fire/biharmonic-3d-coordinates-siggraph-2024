@@ -1180,7 +1180,7 @@ public:
         mat33<T> U , Vt; T x,y,z;
         SVD(U,x,y,z,Vt);
         R = U * Vt;
-        S = Vt.getTranspose() * mat33<T>::Diag(x,y,z)*Vt;
+        S = Vt.getTranspose() * mat33<T>::diag(x,y,z)*Vt;
     }
 
     static

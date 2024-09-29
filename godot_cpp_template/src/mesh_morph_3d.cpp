@@ -4,89 +4,54 @@
 #include <Eigen/Dense>
 #include <iostream>
 #include <godot_cpp/classes/array_mesh.hpp>
+#include <godot_cpp/variant/utility_functions.hpp>
 
 using namespace godot;
 
 void MeshMorph3D::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("update_vertex_positions", "positions"), &MeshMorph3D::update_vertex_positions);
-	ClassDB::bind_method(D_METHOD("apply_deformation_to_children", "mesh"), &MeshMorph3D::apply_deformation_to_children);
-
-	ClassDB::bind_method(D_METHOD("set_cage_mesh", "mesh"), &MeshMorph3D::set_cage_mesh);
-	ClassDB::bind_method(D_METHOD("get_cage_mesh"), &MeshMorph3D::get_cage_mesh);
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "cage_mesh"), "set_cage_mesh", "get_cage_mesh");
-
+	ClassDB::bind_method(D_METHOD("apply_deformation_to_children"), &MeshMorph3D::apply_deformation_to_children);
+	ClassDB::bind_method(D_METHOD("set_deform_mesh", "mesh"), &MeshMorph3D::set_deform_mesh);
+	ClassDB::bind_method(D_METHOD("get_deform_mesh"), &MeshMorph3D::get_deform_mesh);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "deform_mesh"), "set_deform_mesh", "get_deform_mesh");
 	ClassDB::bind_method(D_METHOD("set_gamma_D_13BC", "gamma"), &MeshMorph3D::set_gamma_D_13BC);
 	ClassDB::bind_method(D_METHOD("get_gamma_D_13BC"), &MeshMorph3D::get_gamma_D_13BC);
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "gamma"), "set_gamma_D_13BC", "get_gamma_D_13BC");
 }
 
 MeshMorph3D::MeshMorph3D() {
-    cage_mesh = Ref<ArrayMesh>();
 }
 
 MeshMorph3D::~MeshMorph3D() {
 }
 
-void MeshMorph3D::set_cage_mesh(Ref<ArrayMesh> p_mesh) {
-    cage_mesh = p_mesh;
-    if (cage_mesh.is_valid()) {
-        PackedVector3Array vertex_array = cage_mesh->surface_get_arrays(0)[Mesh::ARRAY_VERTEX];
-        original_vertices.clear();
-        original_vertices.reserve(vertex_array.size());
-        for (int i = 0; i < vertex_array.size(); ++i) {
-            Vector3 v = vertex_array[i];
-            original_vertices.push_back(point3d(v.x, v.y, v.z));
-        }
-    }
-}
-
-Ref<ArrayMesh> MeshMorph3D::get_cage_mesh() const {
-    return cage_mesh;
-}
-
-void MeshMorph3D::update_vertex_positions(const PackedVector3Array &new_positions) {
-        modified_vertices.clear();
-        modified_vertices.reserve(new_positions.size());
-        for (int i = 0; i < new_positions.size(); ++i) {
-            Vector3 v = new_positions[i];
-            modified_vertices.push_back(point3d(v.x, v.y, v.z));
-        }
-}
-
 void MeshMorph3D::apply_deformation_to_children() {
-    Ref<SurfaceTool> surface_tool;
-    surface_tool.instantiate();
-    Ref<ArrayMesh> cage_mesh;
-    Ref<ArrayMesh> cage_deformed_mesh;
-    Ref<ArrayMesh> mesh;
-    std::cout << "Loading cage..." << std::endl;
-    cage_mesh = ResourceLoader::get_singleton()->load("res://models/cage.obj");
-    if (cage_mesh.is_null()) {
-        std::cerr << "Failed to load cage model" << std::endl;
-        return;
+    std::vector<point3d> cage_vertices;
+    std::vector<std::vector<unsigned int>> cage_triangles;
+    open_obj_file("triangle_3d_cage/art/cage.obj", cage_vertices, cage_triangles);
+    std::vector<point3d> cage_modified_vertices;
+    open_obj_file("triangle_3d_cage/art/cage_deformed.obj", cage_modified_vertices, cage_triangles);
+
+    std::vector< point3d > cage_triangle_normals(cage_triangles.size(), point3d(0, 0, 0));
+    for (unsigned int tIt = 0; tIt < cage_triangles.size(); ++tIt) {
+        auto& t = cage_triangles[tIt];
+        cage_triangle_normals[tIt] = point3d::cross(cage_vertices[t[1]] - cage_modified_vertices[t[0]], cage_modified_vertices[t[2]] - cage_modified_vertices[t[0]]).direction();
     }
-
-    cage_deformed_mesh = ResourceLoader::get_singleton()->load("res://models/cage_deformed.obj");
-    if (cage_deformed_mesh.is_null()) {
-        std::cerr << "Failed to load deformed cage model" << std::endl;
-        return;
+    std::vector<point3d> mesh_vertices;
+    std::vector<std::vector<unsigned int>> mesh_triangles;
+    open_obj_file("triangle_3d_cage/art/mesh.obj", mesh_vertices, mesh_triangles);
+    UtilityFunctions::print(String("Vertex count in original mesh: ") + String::num_int64(mesh_vertices.size()));
+    // std::vector<point3d> mesh_modified_vertices = apply_deformation(mesh_vertices, cage_triangles, original_cage_vertices, modified_cage_vertices, cage_triangle_normals);
+    // UtilityFunctions::print(String("Vertex count in deformed mesh: ") + String::num_int64(mesh_modified_vertices.size()));
+	Ref<SurfaceTool> st = memnew(SurfaceTool);
+	st->begin(Mesh::PRIMITIVE_TRIANGLES);
+    for (const auto& triangle : mesh_triangles) {
+        st->add_vertex(godot::Vector3(mesh_vertices[triangle[0]][0], mesh_vertices[triangle[0]][1], -mesh_vertices[triangle[0]][2]));
+        st->add_vertex(godot::Vector3(mesh_vertices[triangle[1]][0], mesh_vertices[triangle[1]][1], -mesh_vertices[triangle[1]][2]));
+        st->add_vertex(godot::Vector3(mesh_vertices[triangle[2]][0], mesh_vertices[triangle[2]][1], -mesh_vertices[triangle[2]][2]));
     }
-
-    std::vector<point3d> cage_vertices = extract_vertices(cage_mesh);
-    std::vector<point3d> cage_modified_vertices = extract_vertices(cage_deformed_mesh);
-    const std::vector<std::vector<unsigned int>> cage_triangles = extract_triangles(cage_deformed_mesh);
-    std::vector<point3d> cage_triangle_normals = calculate_normals(cage_deformed_mesh);
-    std::cout << "Loading mesh..." << std::endl;
-    mesh = ResourceLoader::get_singleton()->load("res://models/mesh.obj");
-    if (mesh.is_null()) {
-        std::cerr << "Failed to load mesh model" << std::endl;
-        return;
-    }
-
-    std::vector<point3d> mesh_vertices = extract_vertices(mesh);
-    std::vector<point3d> mesh_modified_vertices = apply_deformation(mesh_vertices, cage_triangles, cage_vertices, cage_modified_vertices, cage_triangle_normals);
-
-    update_mesh(mesh, mesh_modified_vertices);
+    st->index();
+    st->generate_normals();
+    set_mesh(st->commit());
 }
 
 std::vector<point3d> godot::MeshMorph3D::apply_deformation(const std::vector<point3d> &p_original_vertices, const std::vector<std::vector<unsigned int>> &cage_triangles, const std::vector<point3d> &cage_vertices, const std::vector<point3d> &cage_modified_vertices, std::vector<point3d> &cage_triangle_normals) {
@@ -103,9 +68,8 @@ std::vector<point3d> godot::MeshMorph3D::apply_deformation(const std::vector<poi
 				cage_triangles, cage_vertices,
 				ConstrainedBiH_13_C11, ConstrainedBiH_13_C12, ConstrainedBiH_13_C21, ConstrainedBiH_13_C22,
 				gamma_D_13BC);
-		std::cout << "(1,3)-regularized matrices computed successfully." << std::endl;
-
-		std::cout << "Computing unconstrained coordinates..." << std::endl;
+		UtilityFunctions::print("(1,3)-regularized matrices computed successfully.");
+		UtilityFunctions::print("Computing unconstrained coordinates...");
 		BHC_h_phi.resize(mesh_vertices.size());
 		BHC_bh_phi.resize(mesh_vertices.size());
 		BHC_h_psi.resize(mesh_vertices.size());
@@ -118,10 +82,8 @@ std::vector<point3d> godot::MeshMorph3D::apply_deformation(const std::vector<poi
 					cage_vertices,
 					BHC_h_phi[p_idx], BHC_h_psi[p_idx], BHC_bh_phi[p_idx], BHC_bh_psi[p_idx]);
 		}
-		std::cout << "Unconstrained coordinates computed." << std::endl;
-
-		std::cout << "Compute (1,3)-regularized BHC " << std::endl;
-		
+		UtilityFunctions::print("Unconstrained coordinates computed.");
+        UtilityFunctions::print("Compute (1,3)-regularized BHC ");
         BHConstrainedC_13_phi.resize(mesh_vertices.size());
         BHConstrainedC_13_psi.resize(mesh_vertices.size());
         for (int p_idx = 0; p_idx < mesh_vertices.size(); ++p_idx) {
@@ -138,7 +100,7 @@ std::vector<point3d> godot::MeshMorph3D::apply_deformation(const std::vector<poi
             cage_triangle_normals[tIt] = normal;
         }
 	}
-	std::cout << "Cage triangle normals computed." << std::endl;
+	UtilityFunctions::print("Cage triangle normals computed.");
 #pragma omp parallel for
     for (int v = 0; v < mesh_vertices.size(); ++v) {
         point3d pos(0, 0, 0);
@@ -150,6 +112,101 @@ std::vector<point3d> godot::MeshMorph3D::apply_deformation(const std::vector<poi
         }
         mesh_vertices[v] = pos;
     }
-    std::cout << "Mesh deformation updated from cage deformation." << std::endl;
+	UtilityFunctions::print("Mesh deformation updated from cage deformation.");
 	return mesh_vertices;
+}
+
+std::vector<point3d> godot::MeshMorph3D::convert_godot_array_to_vector(const Array &godot_array) {
+	std::vector<point3d> vec;
+	vec.reserve(godot_array.size());
+	for (int i = 0; i < godot_array.size(); ++i) {
+		Vector3 v = godot_array[i];
+		vec.emplace_back(point3d(v.x, v.y, v.z));
+	}
+	return vec;
+}
+
+std::vector<point3d> godot::MeshMorph3D::extract_vertices(Ref<ArrayMesh> mesh) {
+    std::vector<point3d> vertices;
+    Array arrays = mesh->surface_get_arrays(0);
+    PackedVector3Array vertex_array = arrays[Mesh::ARRAY_VERTEX];
+    PackedInt32Array index_array = arrays[Mesh::ARRAY_INDEX];
+    if (index_array.is_empty()) {
+        for (int i = 0; i < vertex_array.size(); ++i) {
+            Vector3 godot_vertex = vertex_array[i];
+            // Swapping Y and Z coordinates, and negating the new Y
+            point3d converted_vertex(godot_vertex.x, -godot_vertex.z, godot_vertex.y);
+            vertices.push_back(converted_vertex);
+        }
+    } else {
+        for (int i = 0; i < index_array.size(); ++i) {
+            int index = index_array[i];
+            if (index >= 0 && index < vertex_array.size()) {
+                Vector3 godot_vertex = vertex_array[index];
+                // Swapping Y and Z coordinates, and negating the new Y
+                point3d converted_vertex(godot_vertex.x, -godot_vertex.z, godot_vertex.y);
+                vertices.push_back(converted_vertex);
+            } else {
+                UtilityFunctions::printerr("ERROR: Index out of bounds in the vertex array.");
+                return std::vector<point3d>();
+            }
+        }
+    }
+    return vertices;
+}
+
+const std::vector<std::vector<unsigned int>> godot::MeshMorph3D::extract_triangles(Ref<ArrayMesh> mesh) {
+	std::vector<std::vector<unsigned int>> triangles;
+	// Assuming mesh has only one surface
+	Array arrays = mesh->surface_get_arrays(0);
+	PackedInt32Array index_array = arrays[Mesh::ARRAY_INDEX];
+	for (int i = 0; i < index_array.size(); i += 3) {
+		if (i + 2 < index_array.size()) {
+			std::vector<unsigned int> triangle;
+			triangle.push_back(index_array[i]);
+			triangle.push_back(index_array[i + 1]);
+			triangle.push_back(index_array[i + 2]);
+			triangles.push_back(triangle);
+		}
+	}
+	return triangles;
+}
+bool godot::MeshMorph3D::open_obj_file(const String &filename, std::vector<point3d> &vertices, std::vector<std::vector<unsigned int>> &faces) {
+    Ref<FileAccess> file = FileAccess::open(filename, FileAccess::READ);
+    if (file.is_null()) {
+        UtilityFunctions::print(String("Cannot open file: ") + filename);
+        return false;
+    }
+
+    // Read the entire file content into a string
+    String file_content = file->get_as_text();
+    PackedStringArray lines = file_content.split("\n");
+    UtilityFunctions::print(String("Lines of file: " + itos(lines.size()) + "\n"));
+    for (int i = 0; i < lines.size(); ++i) {
+        String line = lines[i].strip_edges();
+        if (line.begins_with("v ")) {
+            // Parse vertex line
+            PackedStringArray vertex_parts = line.substr(2).split(" ");
+            double x = String(vertex_parts[0]).to_float();
+            double y = String(vertex_parts[1]).to_float();
+            double z = String(vertex_parts[2]).to_float();
+            vertices.push_back(point3d(x, y, z));
+        } else if (line.begins_with("f ")) {
+            // Parse face line
+            PackedStringArray face_parts = line.substr(2).split(" ");
+            std::vector<unsigned int> face_indices;
+            for (int j = 0; j < face_parts.size(); ++j) {
+                int index = face_parts[j].to_int() - 1; // OBJ indices are 1-based
+                face_indices.push_back(index);
+            }
+            // Triangulate n-gon
+            for (size_t k = 1; k < face_indices.size() - 1; ++k) {
+                std::vector<unsigned int> triangle = {face_indices[0], face_indices[k], face_indices[k + 1]};
+                faces.push_back(triangle);
+            }
+        }
+    }
+
+    file->close();
+    return true;
 }
