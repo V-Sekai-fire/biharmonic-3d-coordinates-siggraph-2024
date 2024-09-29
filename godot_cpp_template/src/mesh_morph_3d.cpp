@@ -11,19 +11,12 @@ using namespace godot;
 
 void MeshMorph3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("apply_deformation_to_children"), &MeshMorph3D::apply_deformation_to_children);
-	ClassDB::bind_method(D_METHOD("set_source_mesh", "mesh"), &MeshMorph3D::set_source_mesh);
-	ClassDB::bind_method(D_METHOD("get_source_mesh"), &MeshMorph3D::get_source_mesh);
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "source_mesh"), "set_source_mesh", "get_source_mesh");
+	ClassDB::bind_method(D_METHOD("set_deform_mesh", "mesh"), &MeshMorph3D::set_deform_mesh);
+	ClassDB::bind_method(D_METHOD("get_deform_mesh"), &MeshMorph3D::get_deform_mesh);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "deform_mesh"), "set_deform_mesh", "get_deform_mesh");
 	ClassDB::bind_method(D_METHOD("set_gamma_D_13BC", "gamma"), &MeshMorph3D::set_gamma_D_13BC);
 	ClassDB::bind_method(D_METHOD("get_gamma_D_13BC"), &MeshMorph3D::get_gamma_D_13BC);
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "gamma"), "set_gamma_D_13BC", "get_gamma_D_13BC");
-    ClassDB::bind_method(D_METHOD("set_cage", "cage"), &MeshMorph3D::set_cage);
-    ClassDB::bind_method(D_METHOD("get_cage"), &MeshMorph3D::get_cage);
-    ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "cage", PROPERTY_HINT_RESOURCE_TYPE, "ArrayMesh"), "set_cage", "get_cage");
-
-    ClassDB::bind_method(D_METHOD("set_modified_cage", "modified_cage"), &MeshMorph3D::set_modified_cage);
-    ClassDB::bind_method(D_METHOD("get_modified_cage"), &MeshMorph3D::get_modified_cage);
-    ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "modified_cage", PROPERTY_HINT_RESOURCE_TYPE, "ArrayMesh"), "set_modified_cage", "get_modified_cage");
 }
 
 MeshMorph3D::MeshMorph3D() {
@@ -35,47 +28,51 @@ void MeshMorph3D::apply_deformation_to_children() {
     // Load original cage and mesh data
     std::vector<point3d> cage_vertices;
     std::vector<std::vector<unsigned int>> cage_triangles;
-    {
-        std::vector<point3d> new_mesh_vertices;
-        std::vector<std::vector<unsigned int>> new_mesh_triangles;
-
-        if (cage->get_surface_count() > 0) {
-            Array new_arrays = cage->surface_get_arrays(0);
-            Array new_vertices = new_arrays[Mesh::ARRAY_VERTEX];
-            Array new_indices = new_arrays[Mesh::ARRAY_INDEX];
-
-            for (int i = 0; i < new_vertices.size(); ++i) {
-                Vector3 v = new_vertices[i];
-                new_mesh_vertices.push_back(point3(v.x, v.y, v.z));
-            }
-
-            for (int i = 0; i < new_indices.size(); i += 3) {
-                std::vector<unsigned int> triangle = {
-                    static_cast<unsigned int>(new_indices[i]),
-                    static_cast<unsigned int>(new_indices[i + 1]),
-                    static_cast<unsigned int>(new_indices[i + 2])
-                };
-                new_mesh_triangles.push_back(triangle);
-            }
-        }
-        cage_vertices = new_mesh_vertices;
-        cage_triangles = new_mesh_triangles;
+    if (!OBJIO::open("triangle_3d_cage/art/cage.obj", cage_vertices, cage_triangles, true)) {
+        std::cerr << "Failed to load cage model." << std::endl;
+        return;
     }
 
     std::vector<point3d> mesh_vertices;
     std::vector<std::vector<unsigned int>> mesh_triangles;
+    if (!OBJIO::open("triangle_3d_cage/art/mesh.obj", mesh_vertices, mesh_triangles, true)) {
+        std::cerr << "Failed to load mesh model." << std::endl;
+        return;
+    }
+    UtilityFunctions::print(String("Vertex count in original mesh: ") + String::num_int64(mesh_vertices.size()));
+
     {
+        Ref<ArrayMesh> array_mesh = memnew(ArrayMesh);
+        Array arrays;
+        arrays.resize(Mesh::ARRAY_MAX);
+
+        PackedVector3Array vertices;
+        for (const auto& vertex : mesh_vertices) {
+            vertices.push_back(Vector3(vertex[0], vertex[1], vertex[2]));
+        }
+        arrays[Mesh::ARRAY_VERTEX] = vertices;
+
+        PackedInt32Array indices;
+        for (const auto& triangle : mesh_triangles) {
+            for (unsigned int index : triangle) {
+                indices.push_back(index);
+            }
+        }
+        arrays[Mesh::ARRAY_INDEX] = indices;
+
+        array_mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arrays);
+
         std::vector<point3d> new_mesh_vertices;
         std::vector<std::vector<unsigned int>> new_mesh_triangles;
 
-        if (source_mesh->get_surface_count() > 0) {
-            Array new_arrays = source_mesh->surface_get_arrays(0);
+        if (array_mesh->get_surface_count() > 0) {
+            Array new_arrays = array_mesh->surface_get_arrays(0);
             Array new_vertices = new_arrays[Mesh::ARRAY_VERTEX];
             Array new_indices = new_arrays[Mesh::ARRAY_INDEX];
 
             for (int i = 0; i < new_vertices.size(); ++i) {
                 Vector3 v = new_vertices[i];
-                new_mesh_vertices.push_back(point3(v.x, v.y, v.z));
+                new_mesh_vertices.push_back({v.x, v.y, v.z});
             }
 
             for (int i = 0; i < new_indices.size(); i += 3) {
@@ -90,8 +87,6 @@ void MeshMorph3D::apply_deformation_to_children() {
         mesh_vertices = new_mesh_vertices;
         mesh_triangles = new_mesh_triangles;
     }
-
-    UtilityFunctions::print(String("Vertex count in original mesh: ") + String::num_int64(mesh_vertices.size()));
 
     // Compute (1,3)-regularized matrices
     Eigen::MatrixXd ConstrainedBiH_13_C11;
@@ -130,30 +125,9 @@ void MeshMorph3D::apply_deformation_to_children() {
             ConstrainedBiH_13_C11, ConstrainedBiH_13_C12, ConstrainedBiH_13_C21, ConstrainedBiH_13_C22,
             BHConstrainedC_13_phi[p_idx], BHConstrainedC_13_psi[p_idx]);
     }
+
     std::vector<point3d> cage_modified_vertices;
-    {
-        std::vector<point3d> new_mesh_vertices;
-        std::vector<std::vector<unsigned int>> new_mesh_triangles;
-        if (modified_cage->get_surface_count() > 0) {
-            Array new_arrays = modified_cage->surface_get_arrays(0);
-            Array new_vertices = new_arrays[Mesh::ARRAY_VERTEX];
-            Array new_indices = new_arrays[Mesh::ARRAY_INDEX];
-            for (int i = 0; i < new_vertices.size(); ++i) {
-                Vector3 v = new_vertices[i];
-                new_mesh_vertices.push_back({v.x, v.y, v.z});
-            }
-            for (int i = 0; i < new_indices.size(); i += 3) {
-                std::vector<unsigned int> triangle = {
-                    static_cast<unsigned int>(new_indices[i]),
-                    static_cast<unsigned int>(new_indices[i + 1]),
-                    static_cast<unsigned int>(new_indices[i + 2])
-                };
-                new_mesh_triangles.push_back(triangle);
-            }
-        }
-        cage_modified_vertices = new_mesh_vertices;
-        cage_triangles = new_mesh_triangles;
-    }
+    OBJIO::open("triangle_3d_cage/art/cage_deformed.obj", cage_modified_vertices);
     // Compute cage triangle normals
     std::vector<point3d> cage_triangle_normals(cage_triangles.size(), point3d(0, 0, 0));
     for (unsigned int tIt = 0; tIt < cage_triangles.size(); ++tIt) {
@@ -178,24 +152,16 @@ void MeshMorph3D::apply_deformation_to_children() {
     UtilityFunctions::print("Mesh deformation updated from cage deformation.");
     UtilityFunctions::print(String("Vertex count in deformed mesh: ") + String::num_int64(mesh_vertices.size()));
 
-    Ref<ArrayMesh> array_mesh = memnew(ArrayMesh);
-    Array arrays;
-    arrays.resize(Mesh::ARRAY_MAX);
-
-    PackedVector3Array vertices;
-    for (const point3d& vertex : mesh_vertices) {
-        vertices.push_back(Vector3(vertex.x(), vertex.y(), vertex.z()));
+    Ref<SurfaceTool> st = memnew(SurfaceTool);
+    st->begin(Mesh::PRIMITIVE_TRIANGLES);
+    for (const auto& triangle : mesh_triangles) {
+        st->add_vertex(godot::Vector3(mesh_vertices[triangle[0]][0], mesh_vertices[triangle[0]][1], -mesh_vertices[triangle[0]][2]));
+        st->add_vertex(godot::Vector3(mesh_vertices[triangle[1]][0], mesh_vertices[triangle[1]][1], -mesh_vertices[triangle[1]][2]));
+        st->add_vertex(godot::Vector3(mesh_vertices[triangle[2]][0], mesh_vertices[triangle[2]][1], -mesh_vertices[triangle[2]][2]));
     }
-    arrays[Mesh::ARRAY_VERTEX] = vertices;
-    PackedInt32Array indices;
-    for (const std::vector<unsigned int>& triangle : mesh_triangles) {
-        for (unsigned int index : triangle) {
-            indices.push_back(index);
-        }
-    }
-    arrays[Mesh::ARRAY_INDEX] = indices;
-    array_mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arrays);
-    set_mesh(array_mesh);
+    st->index();
+    st->generate_normals();
+    set_mesh(st->commit());
 }
 
 std::vector<point3d> godot::MeshMorph3D::convert_godot_array_to_vector(const Array &godot_array) {
