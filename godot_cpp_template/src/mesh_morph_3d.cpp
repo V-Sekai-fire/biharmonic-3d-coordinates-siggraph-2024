@@ -11,8 +11,6 @@ using namespace godot;
 
 void MeshMorph3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("apply_deformation_to_children"), &MeshMorph3D::apply_deformation_to_children);
-	ClassDB::bind_method(D_METHOD("set_deform_mesh", "mesh"), &MeshMorph3D::set_deform_mesh);
-	ClassDB::bind_method(D_METHOD("get_deform_mesh"), &MeshMorph3D::get_deform_mesh);
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "deform_mesh"), "set_deform_mesh", "get_deform_mesh");
 	ClassDB::bind_method(D_METHOD("set_gamma_D_13BC", "gamma"), &MeshMorph3D::set_gamma_D_13BC);
 	ClassDB::bind_method(D_METHOD("get_gamma_D_13BC"), &MeshMorph3D::get_gamma_D_13BC);
@@ -29,6 +27,10 @@ void MeshMorph3D::_bind_methods() {
     ClassDB::bind_method(D_METHOD("set_mesh_path", "path"), &MeshMorph3D::set_mesh_path);
     ClassDB::bind_method(D_METHOD("get_mesh_path"), &MeshMorph3D::get_mesh_path);
     ADD_PROPERTY(PropertyInfo(Variant::STRING, "mesh_path"), "set_mesh_path", "get_mesh_path");
+
+    ClassDB::bind_method(D_METHOD("set_deformation_switch", "value"), &MeshMorph3D::set_deformation_switch);
+    ClassDB::bind_method(D_METHOD("get_deformation_switch"), &MeshMorph3D::get_deformation_switch);
+    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "deformation_switch"), "set_deformation_switch", "get_deformation_switch");
 }
 
 MeshMorph3D::MeshMorph3D() {
@@ -41,18 +43,19 @@ void MeshMorph3D::apply_deformation_to_children() {
     // Load original cage and mesh data
     std::vector<point3d> cage_vertices;
     std::vector<std::vector<unsigned int>> cage_triangles;
-    if (!OBJIO::open("triangle_3d_cage/art/cage.obj", cage_vertices, cage_triangles, true)) {
-        std::cerr << "Failed to load cage model." << std::endl;
+    if (!OBJIO::open(cage_mesh_path.utf8().get_data(), cage_vertices, cage_triangles, true)) {
+        std::cerr << "Failed to load cage model from " << cage_mesh_path.utf8().get_data() << std::endl;
         return;
     }
 
     std::vector<point3d> mesh_vertices;
     std::vector<std::vector<unsigned int>> mesh_triangles;
-    if (!OBJIO::open("triangle_3d_cage/art/mesh.obj", mesh_vertices, mesh_triangles, true)) {
-        std::cerr << "Failed to load mesh model." << std::endl;
+    if (!OBJIO::open(mesh_path.utf8().get_data(), mesh_vertices, mesh_triangles, true)) {
+        std::cerr << "Failed to load mesh model from " << mesh_path.utf8().get_data() << std::endl;
         return;
     }
     UtilityFunctions::print(String("Vertex count in original mesh: ") + String::num_int64(mesh_vertices.size()));
+
 
     {
         Ref<ArrayMesh> array_mesh = memnew(ArrayMesh);
@@ -140,7 +143,10 @@ void MeshMorph3D::apply_deformation_to_children() {
     }
 
     std::vector<point3d> cage_modified_vertices;
-    OBJIO::open("triangle_3d_cage/art/cage_deformed.obj", cage_modified_vertices);
+    if (!OBJIO::open(cage_deformed_path.utf8().get_data(), cage_modified_vertices)) {
+        std::cerr << "Failed to load deformed cage model from " << cage_deformed_path.utf8().get_data() << std::endl;
+        return;
+    }
     // Compute cage triangle normals
     std::vector<point3d> cage_triangle_normals(cage_triangles.size(), point3d(0, 0, 0));
     for (unsigned int tIt = 0; tIt < cage_triangles.size(); ++tIt) {

@@ -15,11 +15,11 @@ namespace godot {
 class MeshMorph3D : public MeshInstance3D {
     GDCLASS(MeshMorph3D, MeshInstance3D)
 private:
-    Ref<ArrayMesh> deform_mesh;
     float gamma_D_13BC = 1.0;
     String cage_mesh_path = "triangle_3d_cage/art/cage.obj";
     String cage_deformed_path = "triangle_3d_cage/art/cage_deformed.obj";
     String mesh_path = "triangle_3d_cage/art/mesh.obj";
+    bool deformation_switch = false;
 
 	std::vector<point3d> convert_godot_array_to_vector(const Array &godot_array);
 	std::vector<point3d> extract_vertices(Ref<ArrayMesh> mesh);
@@ -36,15 +36,6 @@ public:
     ~MeshMorph3D();
 
     void _init();
-
-    void set_deform_mesh(Ref<ArrayMesh> p_mesh) {
-        deform_mesh = p_mesh;
-        apply_deformation_to_children();
-    }
-
-    Ref<ArrayMesh> get_deform_mesh() const {
-        return deform_mesh;
-    }
 
     void apply_deformation_to_children();
 
@@ -73,6 +64,18 @@ public:
 
     String get_mesh_path() const {
         return mesh_path;
+    }
+    
+    void set_deformation_switch(bool value) {
+        deformation_switch = value;
+        if (deformation_switch) {
+            set_mesh(Ref<ArrayMesh>());
+            apply_deformation_to_children();
+        }
+    }
+
+    bool get_deformation_switch() const {
+        return deformation_switch;
     }
 };
 }
