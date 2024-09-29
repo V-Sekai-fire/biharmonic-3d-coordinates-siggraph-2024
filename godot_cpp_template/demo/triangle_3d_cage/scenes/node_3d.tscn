@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=4 uid="uid://d3bke30es3s3f"]
 
-[sub_resource type="ArrayMesh" id="ArrayMesh_3xdnm"]
+[sub_resource type="ArrayMesh" id="ArrayMesh_uipf8"]
 _surfaces = [{
 "aabb": AABB(-1.78916, -0.72294, -1.99902, 8.41806, 9.70447, 3.99804),
 "format": 34359742471,
@@ -15,4 +15,5 @@ _surfaces = [{
 [node name="Node3D" type="Node3D"]
 
 [node name="MeshInstance3D" type="MeshMorph3D" parent="."]
-mesh = SubResource("ArrayMesh_3xdnm")
+deformation_switch = true
+mesh = SubResource("ArrayMesh_uipf8")
