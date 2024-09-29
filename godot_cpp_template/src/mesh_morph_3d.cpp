@@ -41,6 +41,53 @@ void MeshMorph3D::apply_deformation_to_children() {
     }
     UtilityFunctions::print(String("Vertex count in original mesh: ") + String::num_int64(mesh_vertices.size()));
 
+    {
+        Ref<ArrayMesh> array_mesh = memnew(ArrayMesh);
+        Array arrays;
+        arrays.resize(Mesh::ARRAY_MAX);
+
+        PackedVector3Array vertices;
+        for (const auto& vertex : mesh_vertices) {
+            vertices.push_back(Vector3(vertex[0], vertex[1], vertex[2]));
+        }
+        arrays[Mesh::ARRAY_VERTEX] = vertices;
+
+        PackedInt32Array indices;
+        for (const auto& triangle : mesh_triangles) {
+            for (unsigned int index : triangle) {
+                indices.push_back(index);
+            }
+        }
+        arrays[Mesh::ARRAY_INDEX] = indices;
+
+        array_mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arrays);
+
+        std::vector<point3d> new_mesh_vertices;
+        std::vector<std::vector<unsigned int>> new_mesh_triangles;
+
+        if (array_mesh->get_surface_count() > 0) {
+            Array new_arrays = array_mesh->surface_get_arrays(0);
+            Array new_vertices = new_arrays[Mesh::ARRAY_VERTEX];
+            Array new_indices = new_arrays[Mesh::ARRAY_INDEX];
+
+            for (int i = 0; i < new_vertices.size(); ++i) {
+                Vector3 v = new_vertices[i];
+                new_mesh_vertices.push_back({v.x, v.y, v.z});
+            }
+
+            for (int i = 0; i < new_indices.size(); i += 3) {
+                std::vector<unsigned int> triangle = {
+                    static_cast<unsigned int>(new_indices[i]),
+                    static_cast<unsigned int>(new_indices[i + 1]),
+                    static_cast<unsigned int>(new_indices[i + 2])
+                };
+                new_mesh_triangles.push_back(triangle);
+            }
+        }
+        mesh_vertices = new_mesh_vertices;
+        mesh_triangles = new_mesh_triangles;
+    }
+
     // Compute (1,3)-regularized matrices
     Eigen::MatrixXd ConstrainedBiH_13_C11;
     Eigen::MatrixXd ConstrainedBiH_13_C12;
