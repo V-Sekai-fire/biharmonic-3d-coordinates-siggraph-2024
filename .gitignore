@@ -1,3 +1,4 @@
-build/
-*~
-*.user
+godot_cpp_template/bin/windows
+godot_cpp_template/demo/bin/example.gdextension
+
+godot_cpp_template/src/gen/
