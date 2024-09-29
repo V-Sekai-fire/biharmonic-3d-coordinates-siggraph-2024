@@ -16,8 +16,6 @@ class MeshMorph3D : public MeshInstance3D {
     GDCLASS(MeshMorph3D, MeshInstance3D)
 private:
     Ref<ArrayMesh> deform_mesh;
-    std::vector<point3d> original_cage_vertices;
-    std::vector<point3d> modified_cage_vertices;
     float gamma_D_13BC = 1.0;
 
 	std::vector<point3d> convert_godot_array_to_vector(const Array &godot_array);
