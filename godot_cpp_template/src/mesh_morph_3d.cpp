@@ -238,42 +238,39 @@ const std::vector<std::vector<unsigned int>> godot::MeshMorph3D::extract_triangl
 	}
 	return triangles;
 }
-bool godot::MeshMorph3D::open_obj_file(const String &filename, std::vector<point3d> &vertices, std::vector<std::vector<unsigned int>> &faces) {
-    Ref<FileAccess> file = FileAccess::open(filename, FileAccess::READ);
-    if (file.is_null()) {
-        UtilityFunctions::print(String("Cannot open file: ") + filename);
-        return false;
-    }
 
-    // Read the entire file content into a string
-    String file_content = file->get_as_text();
-    PackedStringArray lines = file_content.split("\n");
-    UtilityFunctions::print(String("Lines of file: " + itos(lines.size()) + "\n"));
-    for (int i = 0; i < lines.size(); ++i) {
-        String line = lines[i].strip_edges();
-        if (line.begins_with("v ")) {
-            // Parse vertex line
-            PackedStringArray vertex_parts = line.substr(2).split(" ");
-            double x = String(vertex_parts[0]).to_float();
-            double y = String(vertex_parts[1]).to_float();
-            double z = String(vertex_parts[2]).to_float();
-            vertices.push_back(point3d(x, y, z));
-        } else if (line.begins_with("f ")) {
-            // Parse face line
-            PackedStringArray face_parts = line.substr(2).split(" ");
-            std::vector<unsigned int> face_indices;
-            for (int j = 0; j < face_parts.size(); ++j) {
-                int index = face_parts[j].to_int() - 1; // OBJ indices are 1-based
-                face_indices.push_back(index);
-            }
-            // Triangulate n-gon
-            for (size_t k = 1; k < face_indices.size() - 1; ++k) {
-                std::vector<unsigned int> triangle = {face_indices[0], face_indices[k], face_indices[k + 1]};
-                faces.push_back(triangle);
-            }
-        }
-    }
+bool godot::MeshMorph3D::get_deformation_switch() const {
+	return deformation_switch;
+}
 
-    file->close();
-    return true;
+void godot::MeshMorph3D::set_deformation_switch(bool value) {
+	deformation_switch = value;
+	if (deformation_switch) {
+		set_mesh(Ref<ArrayMesh>());
+		apply_deformation_to_children();
+	}
+}
+
+String godot::MeshMorph3D::get_mesh_path() const {
+	return mesh_path;
+}
+
+void godot::MeshMorph3D::set_mesh_path(String path) {
+	mesh_path = path;
+}
+
+String godot::MeshMorph3D::get_cage_deformed_path() const {
+	return cage_deformed_path;
+}
+
+void godot::MeshMorph3D::set_cage_deformed_path(String path) {
+	cage_deformed_path = path;
+}
+
+String godot::MeshMorph3D::get_cage_mesh_path() const {
+	return cage_mesh_path;
+}
+
+void godot::MeshMorph3D::set_cage_mesh_path(String path) {
+	cage_mesh_path = path;
 }

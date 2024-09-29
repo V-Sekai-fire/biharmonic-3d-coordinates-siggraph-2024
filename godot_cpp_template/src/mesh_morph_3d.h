@@ -26,7 +26,6 @@ private:
 	const std::vector<std::vector<unsigned int>> extract_triangles(Ref<ArrayMesh> mesh);
 	std::vector<point3d> calculate_normals(Ref<ArrayMesh> mesh);
 	std::vector<point3d> apply_deformation(const std::vector<point3d> &original_vertices, const std::vector<std::vector<unsigned int>> &cage_triangles, const std::vector<point3d> &cage_vertices, const std::vector<point3d> &cage_modified_vertices, std::vector<point3d> &cage_triangle_normals);
-	bool open_obj_file(const String &filename, std::vector<point3d> &vertices, std::vector<std::vector<unsigned int>> &faces);
 
 protected:
 	static void _bind_methods();
@@ -36,47 +35,17 @@ public:
     ~MeshMorph3D();
 
     void _init();
-
     void apply_deformation_to_children();
-
     void set_gamma_D_13BC(float value) { gamma_D_13BC = value; }
     float get_gamma_D_13BC() const { return gamma_D_13BC; }
-    
-    void set_cage_mesh_path(String path) {
-        cage_mesh_path = path;
-    }
-
-    String get_cage_mesh_path() const {
-        return cage_mesh_path;
-    }
-
-    void set_cage_deformed_path(String path) {
-        cage_deformed_path = path;
-    }
-
-    String get_cage_deformed_path() const {
-        return cage_deformed_path;
-    }
-
-    void set_mesh_path(String path) {
-        mesh_path = path;
-    }
-
-    String get_mesh_path() const {
-        return mesh_path;
-    }
-    
-    void set_deformation_switch(bool value) {
-        deformation_switch = value;
-        if (deformation_switch) {
-            set_mesh(Ref<ArrayMesh>());
-            apply_deformation_to_children();
-        }
-    }
-
-    bool get_deformation_switch() const {
-        return deformation_switch;
-    }
+	void set_cage_mesh_path(String path);
+	String get_cage_mesh_path() const;
+	void set_cage_deformed_path(String path);
+	String get_cage_deformed_path() const;
+	void set_mesh_path(String path);
+	String get_mesh_path() const;
+	void set_deformation_switch(bool value);
+	bool get_deformation_switch() const;
 };
 }
 
