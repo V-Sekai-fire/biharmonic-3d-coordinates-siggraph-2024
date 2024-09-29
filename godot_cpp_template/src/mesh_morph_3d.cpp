@@ -17,6 +17,18 @@ void MeshMorph3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_gamma_D_13BC", "gamma"), &MeshMorph3D::set_gamma_D_13BC);
 	ClassDB::bind_method(D_METHOD("get_gamma_D_13BC"), &MeshMorph3D::get_gamma_D_13BC);
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "gamma"), "set_gamma_D_13BC", "get_gamma_D_13BC");
+
+    ClassDB::bind_method(D_METHOD("set_cage_mesh_path", "path"), &MeshMorph3D::set_cage_mesh_path);
+    ClassDB::bind_method(D_METHOD("get_cage_mesh_path"), &MeshMorph3D::get_cage_mesh_path);
+    ADD_PROPERTY(PropertyInfo(Variant::STRING, "cage_mesh_path"), "set_cage_mesh_path", "get_cage_mesh_path");
+
+    ClassDB::bind_method(D_METHOD("set_cage_deformed_path", "path"), &MeshMorph3D::set_cage_deformed_path);
+    ClassDB::bind_method(D_METHOD("get_cage_deformed_path"), &MeshMorph3D::get_cage_deformed_path);
+    ADD_PROPERTY(PropertyInfo(Variant::STRING, "cage_deformed_path"), "set_cage_deformed_path", "get_cage_deformed_path");
+
+    ClassDB::bind_method(D_METHOD("set_mesh_path", "path"), &MeshMorph3D::set_mesh_path);
+    ClassDB::bind_method(D_METHOD("get_mesh_path"), &MeshMorph3D::get_mesh_path);
+    ADD_PROPERTY(PropertyInfo(Variant::STRING, "mesh_path"), "set_mesh_path", "get_mesh_path");
 }
 
 MeshMorph3D::MeshMorph3D() {
@@ -24,6 +36,7 @@ MeshMorph3D::MeshMorph3D() {
 
 MeshMorph3D::~MeshMorph3D() {
 }
+
 void MeshMorph3D::apply_deformation_to_children() {
     // Load original cage and mesh data
     std::vector<point3d> cage_vertices;

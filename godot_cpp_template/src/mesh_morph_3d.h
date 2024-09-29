@@ -17,6 +17,9 @@ class MeshMorph3D : public MeshInstance3D {
 private:
     Ref<ArrayMesh> deform_mesh;
     float gamma_D_13BC = 1.0;
+    String cage_mesh_path = "triangle_3d_cage/art/cage.obj";
+    String cage_deformed_path = "triangle_3d_cage/art/cage_deformed.obj";
+    String mesh_path = "triangle_3d_cage/art/mesh.obj";
 
 	std::vector<point3d> convert_godot_array_to_vector(const Array &godot_array);
 	std::vector<point3d> extract_vertices(Ref<ArrayMesh> mesh);
@@ -27,8 +30,8 @@ private:
 
 protected:
 	static void _bind_methods();
+    
 public:
-
     MeshMorph3D();
     ~MeshMorph3D();
 
@@ -47,6 +50,30 @@ public:
 
     void set_gamma_D_13BC(float value) { gamma_D_13BC = value; }
     float get_gamma_D_13BC() const { return gamma_D_13BC; }
+    
+    void set_cage_mesh_path(String path) {
+        cage_mesh_path = path;
+    }
+
+    String get_cage_mesh_path() const {
+        return cage_mesh_path;
+    }
+
+    void set_cage_deformed_path(String path) {
+        cage_deformed_path = path;
+    }
+
+    String get_cage_deformed_path() const {
+        return cage_deformed_path;
+    }
+
+    void set_mesh_path(String path) {
+        mesh_path = path;
+    }
+
+    String get_mesh_path() const {
+        return mesh_path;
+    }
 };
 }
 
